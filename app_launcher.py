@@ -128,27 +128,43 @@ def launch_interface(args):
     # Start in a thread to avoid blocking if health checks are important
     if os.environ.get('ENVIRONMENT') == 'cloud':
         # In cloud environment, run in thread to allow health checks to respond
-        thread = threading.Thread(
-            target=lambda: interface.launch(
-                server_name=args.host,
-                server_port=args.port,
-                share=enable_sharing,
-                prevent_thread_lock=True,
-                show_api=False,
-                quiet=True
-            )
-        )
+        def gradio_thread_func():
+            try:
+                interface.launch(
+                    server_name=args.host,
+                    server_port=args.port,
+                    share=enable_sharing,
+                    prevent_thread_lock=True,
+                    show_api=False,
+                    quiet=True
+                )
+                logger.info("Gradio interface has completed launching")
+            except Exception as e:
+                logger.error(f"Error in Gradio thread: {str(e)}")
+        
+        thread = threading.Thread(target=gradio_thread_func)
         thread.daemon = True
         thread.start()
         
-        # Keep the main thread alive
+        logger.info("Gradio thread started, now entering keep-alive loop")
+        
+        # Keep the main thread alive with an infinite loop
+        # This is critical for container environments
         try:
-            while thread.is_alive():
-                thread.join(1)  # Join with timeout to keep checking if alive
+            # Keep the application running indefinitely
+            import time
+            while True:
+                # Check if our thread is still alive
+                if not thread.is_alive():
+                    logger.warning("Gradio thread died, but container will stay alive")
+                    
+                # Sleep for a while to avoid CPU usage
+                time.sleep(10)
+                
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt, shutting down...")
-            
-        logger.info("Interface thread has stopped")
+        
+        logger.info("Main loop exited")
     else:
         # For local/development environment, block on the interface
         interface.launch(
