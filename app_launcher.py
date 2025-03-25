@@ -10,6 +10,25 @@ import argparse
 from pathlib import Path
 import urllib.request
 import shutil
+import types
+
+# Define our patch module
+class GradioTunnelingPatch:
+    @staticmethod
+    def get_binary():
+        binary_path = os.path.expanduser("~/.gradio/frpc_linux_amd64_v0.3")
+        if not os.path.exists(binary_path):
+            os.makedirs(os.path.dirname(binary_path), exist_ok=True)
+            urllib.request.urlretrieve(
+                "https://cdn-media.huggingface.co/frpc-gradio-0.3/frpc_linux_amd64",
+                binary_path
+            )
+            os.chmod(binary_path, 0o755)
+        return binary_path
+
+# Create a fake tunneling module
+sys.modules['gradio.tunneling'] = types.ModuleType('gradio.tunneling')
+sys.modules['gradio.tunneling'].get_binary = GradioTunnelingPatch.get_binary
 
 def install_gradio_tunnel_binary():
     """Download and install the Gradio tunneling binary."""
