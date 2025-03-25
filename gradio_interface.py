@@ -59,7 +59,7 @@ class SteamDownloaderInterface:
         download_btn.click(
             fn=self._start_download,
             inputs=[game_id, game_name],
-            outputs=[status, progress]
+            outputs=[status]
         )
 
     def _create_library_tab(self):
@@ -93,10 +93,10 @@ class SteamDownloaderInterface:
     def _start_download(self, app_id, game_name):
         """Start a download and return status"""
         if not app_id or not game_name:
-            return "Error: App ID and Game Name required", None
+            return "Error: App ID and Game Name required"
         
         download_id = self.download_mgr.add_download(app_id, game_name)
-        return f"Download queued (ID: {download_id})", None
+        return f"Download queued (ID: {download_id})"
 
     def _test_steamcmd(self, path):
         """Test SteamCMD installation"""
