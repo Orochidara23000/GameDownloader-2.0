@@ -171,6 +171,17 @@ def setup_gradio_sharing():
         
     return True
 
+def setup_ngrok():
+    """Set up ngrok as an alternative to Gradio's sharing"""
+    try:
+        import pyngrok.ngrok as ngrok
+        public_url = ngrok.connect(8080).public_url
+        logger.info(f"Ngrok tunnel established: {public_url}")
+        return True
+    except:
+        logger.warning("Could not establish ngrok tunnel")
+        return False
+
 def main():
     """Main application entry point"""
     args = parse_arguments()
