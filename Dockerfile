@@ -21,6 +21,12 @@ RUN cd /home/appuser/steamcmd && \
     chmod +x steamcmd.sh && \
     ln -s /home/appuser/steamcmd/steamcmd.sh /usr/local/bin/steamcmd
 
+# Download Gradio tunneling binary (do this as root)
+RUN mkdir -p /usr/local/lib/python3.10/site-packages/gradio && \
+    curl -L https://cdn-media.huggingface.co/frpc-gradio-0.3/frpc_linux_amd64 \
+    -o /usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3 && \
+    chmod +x /usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3
+
 WORKDIR /app
 
 # 4. Copy files and set permissions
@@ -39,11 +45,5 @@ ENV PATH="/home/appuser/steamcmd:${PATH}"
 # 7. Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-7860}/ || exit 1
-
-# Download Gradio tunneling binary (do this as root)
-RUN mkdir -p /usr/local/lib/python3.10/site-packages/gradio && \
-    curl -L https://cdn-media.huggingface.co/frpc-gradio-0.3/frpc_linux_amd64 \
-    -o /usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3 && \
-    chmod +x /usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3
 
 CMD ["./startup.sh"]
