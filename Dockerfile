@@ -40,7 +40,11 @@ ENV PATH="/home/appuser/steamcmd:${PATH}"
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-7860}/ || exit 1
 
-RUN wget https://cdn-media.huggingface.co/frpc-gradio-0.3/frpc_linux_amd64 -O /usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3 && \
+# First install curl if needed
+RUN apt-get update && apt-get install -y curl
+
+# Then download the file using curl
+RUN python3 -c "import urllib.request; import os; os.makedirs('/usr/local/lib/python3.10/site-packages/gradio', exist_ok=True); urllib.request.urlretrieve('https://cdn-media.huggingface.co/frpc-gradio-0.3/frpc_linux_amd64', '/usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3')" && \
     chmod +x /usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3
 
 CMD ["./startup.sh"]
