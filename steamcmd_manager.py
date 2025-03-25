@@ -95,21 +95,41 @@ class SteamCMD:
         logger.info(f"Executing: {' '.join(cmd)}")
         
         try:
+            # Add environment variables for better error handling
+            env = os.environ.copy()
+            env['STEAM_NOINTERACTIVE'] = '1'
+            
+            # Run the command with better error capture
             result = subprocess.run(
                 cmd,
-                check=True,
+                check=False,  # Changed to False to handle errors ourselves
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 timeout=timeout,
-                text=True
+                text=True,
+                env=env
             )
+            
+            # Log the output regardless of success/failure
             logger.debug(f"SteamCMD output:\n{result.stdout}")
+            if result.stderr:
+                logger.debug(f"SteamCMD stderr:\n{result.stderr}")
+            
+            # Check return code
+            if result.returncode != 0:
+                logger.error(f"SteamCMD failed with return code {result.returncode}")
+                return False
+                
             return True
+            
         except subprocess.TimeoutExpired:
-            logger.error("SteamCMD command timed out")
+            logger.error(f"SteamCMD command timed out after {timeout} seconds")
             return False
         except subprocess.CalledProcessError as e:
             logger.error(f"SteamCMD failed: {e.stderr}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error running SteamCMD: {str(e)}")
             return False
     
     def download_game(self, app_id, install_dir, **kwargs):

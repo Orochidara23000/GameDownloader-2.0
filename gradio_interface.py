@@ -109,11 +109,31 @@ class SteamDownloaderInterface:
 
     def _start_download(self, app_id, game_name):
         """Start a download and return status"""
-        if not app_id or not game_name:
-            return "Error: App ID and Game Name required"
-        
-        download_id = self.download_mgr.add_download(app_id, game_name)
-        return f"Download queued (ID: {download_id})"
+        try:
+            if not app_id or not game_name:
+                return "Error: App ID and Game Name required"
+            
+            # Validate inputs
+            try:
+                app_id = int(app_id.strip())
+            except ValueError:
+                return "Error: App ID must be a number"
+                
+            game_name = game_name.strip()
+            if not game_name:
+                return "Error: Game Name cannot be empty"
+            
+            # Add to download queue with error handling
+            try:
+                download_id = self.download_mgr.add_download(app_id, game_name)
+                return f"Download queued (ID: {download_id})"
+            except Exception as e:
+                logger.error(f"Error adding download: {str(e)}")
+                return f"Error starting download: {str(e)}"
+                
+        except Exception as e:
+            logger.error(f"Unexpected error in start download: {str(e)}")
+            return f"An unexpected error occurred: {str(e)}"
 
     def _test_steamcmd(self, path):
         """Test SteamCMD installation"""

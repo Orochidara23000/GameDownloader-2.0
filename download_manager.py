@@ -67,62 +67,82 @@ class DownloadManager:
         
         while self.running:
             try:
-                item = self.download_queue.get(timeout=1)
+                # Get item from queue with timeout
+                try:
+                    item = self.download_queue.get(timeout=1)
+                except queue.Empty:
+                    continue
+                
+                # Extract download ID
                 download_id = item['id']
                 
+                # Update status to downloading
                 with self.lock:
                     self.active_downloads[download_id] = item
                     item['status'] = 'downloading'
                 
                 logger.info(f"Starting download {download_id}: {item['name']}")
                 
-                # Get SteamCMD instance
-                steamcmd = get_steamcmd()
+                try:
+                    # Get SteamCMD instance
+                    steamcmd = get_steamcmd()
+                    
+                    # Set download path
+                    download_path = os.path.join(
+                        self.config.get('download_path', 'data/downloads'),
+                        'steamapps',
+                        'common',
+                        f"app_{item['app_id']}"
+                    )
+                    
+                    # Ensure directory exists
+                    os.makedirs(download_path, exist_ok=True)
+                    
+                    # Start download
+                    success = steamcmd.download_game(
+                        app_id=item['app_id'],
+                        install_dir=download_path,
+                        username=self.config.get('username') if not self.config.get('anonymous_login') else None,
+                        password=self.config.get('password') if not self.config.get('anonymous_login') else None,
+                        validate=self.config.get('validate_files', True),
+                        platform=self.config.get('default_platform', 'windows')
+                    )
+                    
+                    # Update status based on result
+                    with self.lock:
+                        if success:
+                            item['status'] = 'completed'
+                            item['progress'] = 100
+                            logger.info(f"Download completed: {item['name']}")
+                            
+                            # Update library
+                            try:
+                                from library_manager import get_library_manager
+                                lib = get_library_manager()
+                                lib.add_game(
+                                    app_id=item['app_id'],
+                                    name=item['name'],
+                                    location=download_path
+                                )
+                            except Exception as lib_error:
+                                logger.error(f"Failed to update library: {str(lib_error)}")
+                        else:
+                            item['status'] = 'failed'
+                            logger.error(f"Download failed: {item['name']}")
+                        
+                        self.download_queue.task_done()
                 
-                # Set download path
-                download_path = os.path.join(
-                    self.config.get('download_path'),
-                    'steamapps',
-                    'common',
-                    f"app_{item['app_id']}"
-                )
-                
-                # Start download
-                success = steamcmd.download_game(
-                    app_id=item['app_id'],
-                    install_dir=download_path,
-                    username=self.config.get('username') if not self.config.get('anonymous_login') else None,
-                    password=self.config.get('password') if not self.config.get('anonymous_login') else None,
-                    validate=self.config.get('validate_files', True),
-                    platform=self.config.get('default_platform', 'windows')
-                )
-                
-                with self.lock:
-                    if success:
-                        item['status'] = 'completed'
-                        item['progress'] = 100
-                        logger.info(f"Download completed: {item['name']}")
-                    else:
+                except Exception as e:
+                    logger.error(f"Error during download of {item['name']}: {str(e)}")
+                    with self.lock:
                         item['status'] = 'failed'
-                        logger.error(f"Download failed: {item['name']}")
+                        item['error'] = str(e)
+                        self.download_queue.task_done()
                     
-                    # Update library
-                    from library_manager import get_library_manager
-                    lib = get_library_manager()
-                    if success:
-                        lib.add_game(
-                            app_id=item['app_id'],
-                            name=item['name'],
-                            location=download_path
-                        )
-                    
-                    self.download_queue.task_done()
-                    
-            except queue.Empty:
-                continue
             except Exception as e:
-                logger.error(f"Error processing download: {str(e)}")
-                continue
+                logger.error(f"Critical error in download worker: {str(e)}")
+                # Sleep briefly to avoid CPU spinning on continuous errors
+                time.sleep(1)
 
     def get_download_status(self, download_id):
         """Get status of a download"""
