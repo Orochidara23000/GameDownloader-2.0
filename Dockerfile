@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Install system dependencies
+# 1. Install system dependencies
 RUN apt-get update && \
     apt-get install -y \
     curl \
@@ -8,29 +8,36 @@ RUN apt-get update && \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app user and directories
+# 2. Create user and set permissions
 RUN useradd -m appuser && \
+    mkdir -p /app/data/{downloads,config,logs} && \
+    chown -R appuser:appuser /app && \
     mkdir -p /home/appuser/steamcmd && \
-    mkdir -p /data/{downloads,config,logs} && \
-    chown -R appuser:appuser /home/appuser /data
+    chown -R appuser:appuser /home/appuser
+
+# 3. Install SteamCMD
+RUN cd /home/appuser/steamcmd && \
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
+    chmod +x steamcmd.sh && \
+    ln -s /home/appuser/steamcmd/steamcmd.sh /usr/local/bin/steamcmd
 
 WORKDIR /app
 
-# Copy application files
+# 4. Copy files and set permissions
 COPY --chown=appuser:appuser . .
+RUN find . -name "*.sh" -exec chmod +x {} \; && \
+    find . -name "*.py" -exec chmod +x {} \; && \
+    chmod -R 755 /app
 
-# Install Python dependencies
+# 5. Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Switch to appuser
+# 6. Final setup
 USER appuser
-
-# Install SteamCMD as appuser
-RUN cd /home/appuser/steamcmd && \
-    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
-    chmod +x steamcmd.sh
-
-# Set PATH to include SteamCMD
 ENV PATH="/home/appuser/steamcmd:${PATH}"
+
+# 7. Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-7860}/ || exit 1
 
 CMD ["./startup.sh"]

@@ -17,16 +17,26 @@ logger = logging.getLogger(__name__)
 class SteamCMD:
     """Container-optimized SteamCMD manager"""
     
-    def __init__(self, install_path="~/steamcmd"):
-        self.install_path = Path(install_path).expanduser()
+    def __init__(self):
+        # Auto-detect install path
+        self.install_path = Path(os.environ.get('STEAMCMD_PATH', '/home/appuser/steamcmd'))
         self.steamcmd_sh = self.install_path / "steamcmd.sh"
         self.linux32_dir = self.install_path / "linux32"
+        
+        # Ensure permissions
+        os.system(f"chmod +x {self.steamcmd_sh}") if self.steamcmd_sh.exists() else None
+        
         self._ensure_install_path()
         
     def _ensure_install_path(self):
-        """Ensure installation directory exists"""
-        self.install_path.mkdir(parents=True, exist_ok=True)
-        self.linux32_dir.mkdir(exist_ok=True)
+        """Create directory with correct permissions"""
+        try:
+            self.install_path.mkdir(parents=True, exist_ok=True)
+            self.linux32_dir.mkdir(exist_ok=True)
+            os.system(f"chmod 755 {self.install_path}")
+        except Exception as e:
+            logger.error(f"Error setting up SteamCMD: {str(e)}")
+            raise
         
     def is_installed(self):
         """Check if SteamCMD is properly installed"""
