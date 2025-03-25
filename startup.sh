@@ -1,40 +1,47 @@
 #!/bin/bash
-# Nixpacks-compatible Startup Script
-
 set -e
 
 # Initialize directories
-mkdir -p /data/downloads
-mkdir -p /data/config
+mkdir -p /data/{downloads,config,logs}
 
-# Install SteamCMD if not present
-if [ ! -f "$HOME/steamcmd/steamcmd.sh" ]; then
+# Install SteamCMD if missing
+if ! command -v steamcmd &>/dev/null; then
     echo "Installing SteamCMD..."
-    mkdir -p "$HOME/steamcmd"
-    cd "$HOME/steamcmd"
+    mkdir -p ~/steamcmd
+    cd ~/steamcmd
     curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -
     chmod +x steamcmd.sh
+    ln -s ~/steamcmd/steamcmd.sh /usr/local/bin/steamcmd
     cd -
 fi
 
-# Test SteamCMD
-echo "Testing SteamCMD..."
-if ! "$HOME/steamcmd/steamcmd.sh" +quit; then
-    echo "Warning: SteamCMD test failed - downloads may not work"
+# Verify Python environment
+if [ ! -f "/opt/venv/bin/activate" ]; then
+    echo "Setting up Python virtual environment..."
+    python -m venv /opt/venv
+    . /opt/venv/bin/activate
+    pip install -r requirements.txt
 fi
 
-# Find and run the main application
-LAUNCHER=""
-for script in app_launcher.py main.py run.py; do
-    if [ -f "$script" ]; then
-        LAUNCHER="$script"
+# Activate virtual environment
+source /opt/venv/bin/activate
+
+# Find main application
+APP_FILE=""
+for file in app_launcher.py main.py run.py; do
+    if [ -f "$file" ]; then
+        APP_FILE="$file"
         break
     fi
 done
 
-if [ -z "$LAUNCHER" ]; then
-    echo "Error: No launcher script found!"
+if [ -z "$APP_FILE" ]; then
+    echo "Error: No application file found!"
     exit 1
 fi
 
-exec python "$LAUNCHER" --host 0.0.0.0 --port ${PORT:-7860}
+# Start application
+exec python "$APP_FILE" \
+    --host 0.0.0.0 \
+    --port ${PORT:-7860} \
+    --no-browser
