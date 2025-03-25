@@ -109,7 +109,7 @@ def launch_interface(args):
     
     # Check if tunneling binary exists before enabling sharing
     binary_path = os.environ.get("GRADIO_TUNNEL_BINARY_PATH")
-    enable_sharing = binary_path and os.path.exists(binary_path)
+    enable_sharing = binary_path is not None and os.path.exists(binary_path)
     
     interface.launch(
         server_name=args.host,
@@ -143,13 +143,33 @@ def setup_gradio_sharing():
             )
             os.chmod(binary_path, 0o755)
             logger.info("Successfully downloaded and configured Gradio tunneling binary")
-            return True
         except Exception as e:
             logger.error(f"Failed to download tunneling binary: {str(e)}")
             return False
     else:
         logger.info("Gradio tunneling binary already exists")
-        return True
+    
+    # Patch Gradio's tunnel module to use our binary
+    try:
+        logger.info("Patching Gradio to use custom tunnel binary path")
+        import gradio.tunneling
+        
+        # Save the original function
+        original_get_binary = gradio.tunneling.get_binary
+        
+        # Define our override function that returns our custom path
+        def patched_get_binary(*args, **kwargs):
+            logger.info(f"Redirecting Gradio tunnel binary request to: {binary_path}")
+            return binary_path
+        
+        # Apply the patch
+        gradio.tunneling.get_binary = patched_get_binary
+        logger.info("Successfully patched Gradio tunneling")
+    except Exception as e:
+        logger.error(f"Failed to patch Gradio tunneling: {str(e)}")
+        return False
+        
+    return True
 
 def main():
     """Main application entry point"""
