@@ -10,6 +10,7 @@ import argparse
 from pathlib import Path
 import urllib.request
 import shutil
+from gradio_helper import install_gradio_tunnel_binary
 
 def configure_logging(debug=False):
     """Set up logging configuration"""
@@ -65,32 +66,38 @@ def initialize_environment():
     get_steamcmd()  # Auto-initializes if needed
 
 def install_gradio_tunnel_binary():
-    """Download and install the missing Gradio tunneling binary."""
-    # Constants
+    """Download and install the Gradio tunneling binary."""
     binary_url = "https://cdn-media.huggingface.co/frpc-gradio-0.3/frpc_linux_amd64"
     target_filename = "frpc_linux_amd64_v0.3"
     target_directory = "/usr/local/lib/python3.10/site-packages/gradio"
     target_path = os.path.join(target_directory, target_filename)
     
-    # Check if the file already exists
+    logger.info(f"Checking for Gradio tunneling binary at {target_path}")
+    
     if os.path.exists(target_path):
-        print(f"Tunneling binary already exists at {target_path}")
+        logger.info("Gradio tunneling binary already exists")
         return True
-        
+    
+    logger.info(f"Downloading Gradio tunneling binary from {binary_url}")
     try:
         # Create a temporary file
         temp_file, _ = urllib.request.urlretrieve(binary_url)
         
         # Copy to the target location
+        logger.info(f"Copying binary to {target_path}")
         shutil.copy2(temp_file, target_path)
         
         # Set executable permissions
-        os.chmod(target_path, 0o755)
+        logger.info("Setting executable permissions")
+        try:
+            os.chmod(target_path, 0o755)
+        except Exception as e:
+            logger.warning(f"Could not set permissions: {str(e)}")
         
-        print(f"Successfully installed Gradio tunneling binary to {target_path}")
+        logger.info("Gradio tunneling binary installed successfully")
         return True
     except Exception as e:
-        print(f"Failed to install Gradio tunneling binary: {str(e)}")
+        logger.error(f"Failed to install Gradio tunneling binary: {str(e)}")
         return False
 
 def launch_interface(args):
@@ -111,15 +118,16 @@ def main():
     logger = configure_logging(args.debug)
     
     logger.info("Starting Steam Games Downloader")
-    logger.debug(f"Python version: {sys.version}")
-    logger.debug(f"Working directory: {os.getcwd()}")
     
     try:
+        # Initialize environment
         initialize_environment()
         
-        # Install the Gradio tunneling binary before launching the interface
+        # Install Gradio tunneling binary
+        logger.info("Setting up Gradio tunneling...")
         install_gradio_tunnel_binary()
         
+        # Launch the interface
         launch_interface(args)
     except Exception as e:
         logger.critical(f"Fatal error: {str(e)}", exc_info=True)
