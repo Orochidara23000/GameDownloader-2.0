@@ -54,7 +54,7 @@ class SteamDownloaderInterface:
             
             with gr.Column(scale=3):
                 status = gr.Textbox(label="Download Status", interactive=False)
-                progress = gr.ProgressBar()
+                progress = gr.Progress()
                 
         download_btn.click(
             fn=self._start_download,
@@ -93,10 +93,10 @@ class SteamDownloaderInterface:
     def _start_download(self, app_id, game_name):
         """Start a download and return status"""
         if not app_id or not game_name:
-            return "Error: App ID and Game Name required", 0
+            return "Error: App ID and Game Name required", None
         
         download_id = self.download_mgr.add_download(app_id, game_name)
-        return f"Download queued (ID: {download_id})", 0.1
+        return f"Download queued (ID: {download_id})", None
 
     def _test_steamcmd(self, path):
         """Test SteamCMD installation"""
