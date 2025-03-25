@@ -104,31 +104,30 @@ def launch_interface(args):
     """Launch the Gradio interface"""
     from gradio_interface import create_interface
     
-    interface = create_interface()
+    interface, enable_sharing = create_interface()
     interface.launch(
         server_name=args.host,
         server_port=args.port,
-        share=True,
+        share=enable_sharing,  # Only enable if binary exists
         prevent_thread_lock=True
     )
 
 def setup_gradio_sharing():
-    """Set up Gradio sharing without requiring system modifications."""
-    import os
-    import urllib.request
-    import tempfile
-    
+    """Set up Gradio sharing with user permissions"""
     logger = logging.getLogger('launcher')
     
-    # Create a user-specific directory that we can write to
+    # Create user-writable directory
     user_gradio_dir = os.path.expanduser("~/.gradio")
     os.makedirs(user_gradio_dir, exist_ok=True)
     
-    # Set environment variable to tell Gradio to use our directory
+    # Define file paths
     binary_path = os.path.join(user_gradio_dir, "frpc_linux_amd64_v0.3")
+    
+    # Set environment variable to tell Gradio where to find the binary
+    logger.info(f"Setting GRADIO_TUNNEL_BINARY_PATH to {binary_path}")
     os.environ["GRADIO_TUNNEL_BINARY_PATH"] = binary_path
     
-    # Download the file if it doesn't exist
+    # Download the binary if needed
     if not os.path.exists(binary_path):
         logger.info(f"Downloading Gradio tunneling binary to {binary_path}")
         try:
@@ -136,13 +135,15 @@ def setup_gradio_sharing():
                 "https://cdn-media.huggingface.co/frpc-gradio-0.3/frpc_linux_amd64", 
                 binary_path
             )
-            os.chmod(binary_path, 0o755)  # Make executable
-            logger.info("Download successful")
+            os.chmod(binary_path, 0o755)
+            logger.info("Successfully downloaded and configured Gradio tunneling binary")
+            return True
         except Exception as e:
-            logger.error(f"Failed to download: {str(e)}")
+            logger.error(f"Failed to download tunneling binary: {str(e)}")
             return False
-    
-    return True
+    else:
+        logger.info("Gradio tunneling binary already exists")
+        return True
 
 def main():
     """Main application entry point"""
@@ -156,11 +157,9 @@ def main():
     try:
         initialize_environment()
         
-        # Install the Gradio tunneling binary before launching the interface
+        # Set up Gradio sharing with user permissions
         logger.info("Setting up Gradio tunneling...")
-        install_gradio_tunnel_binary()
-        
-        setup_gradio_sharing()
+        sharing_setup = setup_gradio_sharing()
         
         launch_interface(args)
     except Exception as e:
