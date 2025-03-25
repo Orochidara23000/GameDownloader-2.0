@@ -33,6 +33,19 @@ class DownloadManager:
 
     def add_download(self, app_id, game_name):
         """Add a game to download queue"""
+        # Check if SteamCMD is available
+        from steamcmd_manager import get_steamcmd
+        steamcmd = get_steamcmd()
+        if not steamcmd.is_installed():
+            try:
+                # Try to install SteamCMD before adding to queue
+                logger.info("SteamCMD not installed, attempting installation...")
+                if not steamcmd.install():
+                    raise RuntimeError("Failed to install SteamCMD. Downloads will not work.")
+            except Exception as e:
+                logger.error(f"SteamCMD installation error: {str(e)}")
+                raise RuntimeError(f"Cannot add download: SteamCMD installation failed: {str(e)}")
+        
         with self.lock:
             download_id = f"{app_id}-{int(time.time())}"
             self.download_queue.put({
@@ -87,23 +100,37 @@ class DownloadManager:
                     # Get SteamCMD instance
                     steamcmd = get_steamcmd()
                     
+                    # Verify SteamCMD is installed
+                    if not steamcmd.is_installed():
+                        logger.error("SteamCMD not installed, attempting to install now...")
+                        if not steamcmd.install():
+                            raise RuntimeError("SteamCMD installation failed")
+                    
                     # Set download path
+                    base_download_path = self.config.get('download_path', 'data/downloads')
                     download_path = os.path.join(
-                        self.config.get('download_path', 'data/downloads'),
+                        base_download_path,
                         'steamapps',
                         'common',
                         f"app_{item['app_id']}"
                     )
                     
                     # Ensure directory exists
-                    os.makedirs(download_path, exist_ok=True)
+                    try:
+                        os.makedirs(download_path, exist_ok=True)
+                    except Exception as path_error:
+                        logger.error(f"Failed to create download directory: {str(path_error)}")
+                        # Try alternate directory
+                        download_path = os.path.join(os.getcwd(), 'downloads', f"app_{item['app_id']}")
+                        os.makedirs(download_path, exist_ok=True)
+                        logger.info(f"Using alternate download path: {download_path}")
                     
                     # Start download
                     success = steamcmd.download_game(
                         app_id=item['app_id'],
                         install_dir=download_path,
-                        username=self.config.get('username') if not self.config.get('anonymous_login') else None,
-                        password=self.config.get('password') if not self.config.get('anonymous_login') else None,
+                        username=self.config.get('username') if not self.config.get('anonymous_login', True) else None,
+                        password=self.config.get('password') if not self.config.get('anonymous_login', True) else None,
                         validate=self.config.get('validate_files', True),
                         platform=self.config.get('default_platform', 'windows')
                     )
