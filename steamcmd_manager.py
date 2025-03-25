@@ -47,8 +47,27 @@ class SteamCMD:
         
     def is_installed(self):
         """Check if SteamCMD is properly installed"""
-        return (self.steamcmd_sh.exists() and 
+        # First check if files exist
+        basic_check = (self.steamcmd_sh.exists() and 
                 (self.linux32_dir / "steamcmd").exists())
+                
+        if not basic_check:
+            return False
+            
+        # Try to run a simple command to verify it works
+        try:
+            # Make a very brief test call
+            test_result = subprocess.run(
+                [str(self.steamcmd_sh), "+quit"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=10,
+                check=False
+            )
+            return test_result.returncode == 0
+        except Exception as e:
+            logger.warning(f"SteamCMD exists but fails to run: {str(e)}")
+            return False
     
     def install(self):
         """Install SteamCMD in container-friendly way"""
@@ -57,6 +76,9 @@ class SteamCMD:
             return True
             
         try:
+            # Check for and install dependencies if needed
+            self._ensure_dependencies()
+                
             # Download and extract SteamCMD
             url = "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz"
             tar_path = self.install_path / "steamcmd_linux.tar.gz"
@@ -80,11 +102,51 @@ class SteamCMD:
                 (self.linux32_dir / "steamcmd").chmod(0o755)
             
             tar_path.unlink()
+            
+            # Run once to trigger first-time setup
+            logger.info("Running SteamCMD first-time setup...")
+            self.run_command(["+quit"], timeout=120)
+            
             return True
             
         except Exception as e:
             logger.error(f"Installation failed: {str(e)}")
             return False
+    
+    def _ensure_dependencies(self):
+        """Ensure required dependencies are installed"""
+        try:
+            # Check if we're on a Linux system
+            if os.name != 'posix':
+                logger.warning("Not running on Linux - dependency installation skipped")
+                return
+                
+            # Check if apt-get is available (Debian/Ubuntu)
+            if shutil.which('apt-get'):
+                logger.info("Installing dependencies via apt-get")
+                subprocess.run(
+                    ["apt-get", "update", "-y"],
+                    check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
+                subprocess.run(
+                    ["apt-get", "install", "-y", "lib32gcc-s1", "curl", "ca-certificates", "lib32stdc++6"],
+                    check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
+                return
+                
+            # Check if yum is available (RHEL/CentOS/Fedora)
+            if shutil.which('yum'):
+                logger.info("Installing dependencies via yum")
+                subprocess.run(
+                    ["yum", "install", "-y", "glibc.i686", "libstdc++.i686", "curl"],
+                    check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
+                return
+                
+            logger.warning("No known package manager found - skipping dependency installation")
+                
+        except Exception as e:
+            logger.warning(f"Error installing dependencies: {str(e)}")
     
     def run_command(self, commands, timeout=300):
         """Run SteamCMD with given commands"""

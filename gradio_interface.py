@@ -139,12 +139,28 @@ class SteamDownloaderInterface:
         """Test SteamCMD installation"""
         from steamcmd_manager import get_steamcmd
         try:
+            # Update steamcmd path if provided
+            if path and path.strip():
+                os.environ['STEAMCMD_PATH'] = path.strip()
+                logger.info(f"Setting SteamCMD path to: {path}")
+                
+            # Get new instance with updated path
             steamcmd = get_steamcmd()
+            
+            # Check if installed
+            if not steamcmd.is_installed():
+                logger.info("SteamCMD not installed, attempting installation...")
+                if not steamcmd.install():
+                    return "❌ SteamCMD not installed and installation failed"
+            
+            # Test if it works
             if steamcmd.run_command(["+quit"]):
                 return "✅ SteamCMD working correctly"
-            return "❌ SteamCMD test failed"
+            else:
+                return "❌ SteamCMD test failed - executable exists but command failed"
         except Exception as e:
-            return f"Error: {str(e)}"
+            logger.error(f"SteamCMD test error: {str(e)}")
+            return f"❌ Error: {str(e)}"
 
     def _get_css(self):
         """Return custom CSS styles"""

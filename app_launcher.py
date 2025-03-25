@@ -96,7 +96,18 @@ def initialize_environment():
     
     # Initialize components
     from steamcmd_manager import get_steamcmd
-    get_steamcmd()  # Auto-initializes if needed
+    steamcmd = get_steamcmd()  # Auto-initializes if needed
+    
+    # Ensure SteamCMD is installed
+    logger = logging.getLogger('launcher')
+    if not steamcmd.is_installed():
+        logger.info("SteamCMD not installed. Installing now...")
+        if steamcmd.install():
+            logger.info("SteamCMD installed successfully")
+        else:
+            logger.error("Failed to install SteamCMD - downloads will not work!")
+    else:
+        logger.info("SteamCMD is already installed")
 
 def verify_tunnel_binary():
     """Verify that the Gradio tunneling binary exists"""
