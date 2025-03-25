@@ -23,8 +23,12 @@ class SteamCMD:
         self.steamcmd_sh = self.install_path / "steamcmd.sh"
         self.linux32_dir = self.install_path / "linux32"
         
-        # Ensure permissions
-        os.system(f"chmod +x {self.steamcmd_sh}") if self.steamcmd_sh.exists() else None
+        # Ensure permissions (try but don't fail if permissions can't be set)
+        if self.steamcmd_sh.exists():
+            try:
+                os.chmod(self.steamcmd_sh, 0o755)
+            except PermissionError:
+                logger.warning(f"Cannot set executable permissions on {self.steamcmd_sh} - continuing anyway")
         
         self._ensure_install_path()
         
@@ -33,7 +37,10 @@ class SteamCMD:
         try:
             self.install_path.mkdir(parents=True, exist_ok=True)
             self.linux32_dir.mkdir(exist_ok=True)
-            os.system(f"chmod 755 {self.install_path}")
+            try:
+                os.chmod(self.install_path, 0o755)
+            except PermissionError:
+                logger.warning(f"Cannot set permissions on {self.install_path} - continuing anyway")
         except Exception as e:
             logger.error(f"Error setting up SteamCMD: {str(e)}")
             raise
