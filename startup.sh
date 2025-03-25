@@ -2,7 +2,7 @@
 set -e
 
 # Initialize environment
-export PATH="/usr/local/bin:$PATH"
+export STEAMCMD_PATH="/home/appuser/steamcmd"
 
 # Run the application
 exec python app_launcher.py \

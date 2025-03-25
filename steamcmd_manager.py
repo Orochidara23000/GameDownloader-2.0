@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 class SteamCMD:
     """Container-optimized SteamCMD manager"""
     
-    def __init__(self, install_path="/root/steamcmd"):
-        self.install_path = Path(install_path)
+    def __init__(self, install_path="~/steamcmd"):
+        self.install_path = Path(install_path).expanduser()
         self.steamcmd_sh = self.install_path / "steamcmd.sh"
         self.linux32_dir = self.install_path / "linux32"
         self._ensure_install_path()

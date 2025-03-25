@@ -8,26 +8,29 @@ RUN apt-get update && \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install SteamCMD
-RUN mkdir -p /usr/local/steamcmd && \
-    cd /usr/local/steamcmd && \
-    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
-    chmod +x steamcmd.sh && \
-    ln -s /usr/local/steamcmd/steamcmd.sh /usr/local/bin/steamcmd
+# Create app user and directories
+RUN useradd -m appuser && \
+    mkdir -p /home/appuser/steamcmd && \
+    mkdir -p /data/{downloads,config,logs} && \
+    chown -R appuser:appuser /home/appuser /data
 
 WORKDIR /app
 
-# Copy files and set permissions
-COPY . .
-RUN chmod +x startup.sh && \
-    chown -R nobody:nogroup /app && \
-    mkdir -p /data/{downloads,config,logs} && \
-    chown -R nobody:nogroup /data
+# Copy application files
+COPY --chown=appuser:appuser . .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Run as non-root user
-USER nobody
+# Switch to appuser
+USER appuser
+
+# Install SteamCMD as appuser
+RUN cd /home/appuser/steamcmd && \
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf - && \
+    chmod +x steamcmd.sh
+
+# Set PATH to include SteamCMD
+ENV PATH="/home/appuser/steamcmd:${PATH}"
 
 CMD ["./startup.sh"]
