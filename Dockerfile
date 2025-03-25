@@ -40,9 +40,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 USER appuser
 ENV PATH="/home/appuser/steamcmd:${PATH}"
 ENV PORT=8080
+ENV PYTHONUNBUFFERED=1
 
 # 7. Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-7860}/ || exit 1
 
-CMD ["./startup.sh"]
+# 8. Set proper signal handling for container environment
+ENTRYPOINT ["./startup.sh"]
