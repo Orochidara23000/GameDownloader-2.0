@@ -1,2 +1,11 @@
-# .nixpacks
-providers = ["python"]
+[phases.setup]
+pkgs = ["python3", "gcc", "curl", "tar"]
+
+[phases.install]
+cmds = [
+    "python -m venv --copies /opt/venv",
+    ". /opt/venv/bin/activate && pip install -r requirements.txt"
+]
+
+[start]
+cmd = "./startup.sh"
