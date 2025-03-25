@@ -112,6 +112,38 @@ def launch_interface(args):
         prevent_thread_lock=True
     )
 
+def setup_gradio_sharing():
+    """Set up Gradio sharing without requiring system modifications."""
+    import os
+    import urllib.request
+    import tempfile
+    
+    logger = logging.getLogger('launcher')
+    
+    # Create a user-specific directory that we can write to
+    user_gradio_dir = os.path.expanduser("~/.gradio")
+    os.makedirs(user_gradio_dir, exist_ok=True)
+    
+    # Set environment variable to tell Gradio to use our directory
+    binary_path = os.path.join(user_gradio_dir, "frpc_linux_amd64_v0.3")
+    os.environ["GRADIO_TUNNEL_BINARY_PATH"] = binary_path
+    
+    # Download the file if it doesn't exist
+    if not os.path.exists(binary_path):
+        logger.info(f"Downloading Gradio tunneling binary to {binary_path}")
+        try:
+            urllib.request.urlretrieve(
+                "https://cdn-media.huggingface.co/frpc-gradio-0.3/frpc_linux_amd64", 
+                binary_path
+            )
+            os.chmod(binary_path, 0o755)  # Make executable
+            logger.info("Download successful")
+        except Exception as e:
+            logger.error(f"Failed to download: {str(e)}")
+            return False
+    
+    return True
+
 def main():
     """Main application entry point"""
     args = parse_arguments()
@@ -127,6 +159,8 @@ def main():
         # Install the Gradio tunneling binary before launching the interface
         logger.info("Setting up Gradio tunneling...")
         install_gradio_tunnel_binary()
+        
+        setup_gradio_sharing()
         
         launch_interface(args)
     except Exception as e:
