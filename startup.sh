@@ -1,13 +1,11 @@
 #!/bin/sh
-# Auto-set permissions on startup
-find /app -name "*.sh" -exec chmod +x {} \;
-find /app -name "*.py" -exec chmod +x {} \;
+# Steam Games Downloader - Startup Script
 
-# Set environment
+# Set environment variables
 export STEAMCMD_PATH="/home/appuser/steamcmd"
 export PATH="${STEAMCMD_PATH}:${PATH}"
 
-# Verify SteamCMD
+# Verify SteamCMD installation
 if [ ! -f "${STEAMCMD_PATH}/steamcmd.sh" ]; then
     echo "Installing SteamCMD..."
     mkdir -p ${STEAMCMD_PATH}
@@ -16,17 +14,15 @@ if [ ! -f "${STEAMCMD_PATH}/steamcmd.sh" ]; then
     chmod +x steamcmd.sh
 fi
 
-# Download to user directory first
-mkdir -p ~/.gradio
-curl -L https://cdn-media.huggingface.co/frpc-gradio-0.3/frpc_linux_amd64 -o ~/.gradio/frpc_linux_amd64_v0.3
-chmod +x ~/.gradio/frpc_linux_amd64_v0.3
-
-# Try to create a symlink to the system location
-mkdir -p /usr/local/lib/python3.10/site-packages/gradio || true
-ln -sf ~/.gradio/frpc_linux_amd64_v0.3 /usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3 || true
+# Verify Gradio binary exists
+if [ -f "/usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3" ]; then
+    echo "Gradio tunneling binary is already installed"
+else
+    echo "WARNING: Gradio tunneling binary is missing, sharing functionality will be disabled"
+fi
 
 # Run application
+echo "Starting Steam Games Downloader application..."
 exec python app_launcher.py \
     --host 0.0.0.0 \
-    --port ${PORT:-7860} \
-    --no-browser
+    --port ${PORT:-7860}

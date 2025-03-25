@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  steam-downloader:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data/downloads:/app/data/downloads
+      - ./data/config:/app/data/config
+    environment:
+      - PORT=8080
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s 

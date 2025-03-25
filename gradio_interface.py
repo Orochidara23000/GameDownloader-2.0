@@ -2,6 +2,7 @@
 Gradio Interface for Steam Games Downloader
 """
 
+import os
 import logging
 import gradio as gr
 from download_manager import get_download_manager
@@ -27,6 +28,9 @@ class SteamDownloaderInterface:
             # Header
             gr.Markdown("# Steam Games Downloader")
             
+            # Access info
+            self._create_access_info()
+            
             # Tabbed interface
             with gr.Tabs():
                 with gr.Tab("Download"):
@@ -43,6 +47,22 @@ class SteamDownloaderInterface:
             gr.Markdown("> Steam Games Downloader | Running in container mode")
 
         return interface
+    
+    def _create_access_info(self):
+        """Display access information for the app"""
+        with gr.Box():
+            gr.Markdown("### Access Information")
+            
+            # Check if tunneling binary exists
+            tunneling_available = os.path.exists("/usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3")
+            if tunneling_available:
+                gr.Markdown("✅ **Public sharing is available** - A public URL will be generated when the app starts.")
+            else:
+                gr.Markdown("⚠️ **Public sharing is NOT available** - This app can only be accessed via direct URL.")
+                gr.Markdown("To access this application, use one of these methods:")
+                gr.Markdown("1. Access via the container's hostname/IP and port")
+                gr.Markdown("2. Set up a reverse proxy or ingress to expose this service")
+                gr.Markdown("3. Configure port forwarding if running locally")
 
     def _create_download_tab(self):
         """Download game tab UI"""
@@ -127,9 +147,4 @@ if __name__ == "__main__":
     # For testing
     logging.basicConfig(level=logging.INFO)
     interface = create_interface()
-    interface.launch(
-        server_name=args.host, 
-        server_port=args.port,
-        share=True,
-        prevent_thread_lock=True
-    )
+    interface.launch()
