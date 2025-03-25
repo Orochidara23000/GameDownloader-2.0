@@ -104,7 +104,13 @@ def launch_interface(args):
     """Launch the Gradio interface"""
     from gradio_interface import create_interface
     
-    interface, enable_sharing = create_interface()
+    # Get the interface
+    interface = create_interface()
+    
+    # Check if tunneling binary exists before enabling sharing
+    binary_path = os.environ.get("GRADIO_TUNNEL_BINARY_PATH")
+    enable_sharing = binary_path and os.path.exists(binary_path)
+    
     interface.launch(
         server_name=args.host,
         server_port=args.port,
