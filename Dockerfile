@@ -41,10 +41,14 @@ USER appuser
 ENV PATH="/home/appuser/steamcmd:${PATH}"
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
+ENV ENVIRONMENT="cloud"
 
 # 7. Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-7860}/ || exit 1
+HEALTHCHECK --interval=5s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8081/health || exit 1
 
-# 8. Set proper signal handling for container environment
+# 8. Expose both main application and health check ports
+EXPOSE 8080 8081
+
+# 9. Set proper signal handling for container environment
 ENTRYPOINT ["./startup.sh"]

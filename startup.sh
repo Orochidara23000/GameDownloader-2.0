@@ -7,6 +7,7 @@ trap 'echo "Caught signal, stopping gracefully..."; kill -TERM $PID; wait $PID' 
 # Set environment variables
 export STEAMCMD_PATH="/home/appuser/steamcmd"
 export PATH="${STEAMCMD_PATH}:${PATH}"
+export ENVIRONMENT="cloud"  # Set environment type for cloud deployment
 
 # Verify SteamCMD installation
 if [ ! -f "${STEAMCMD_PATH}/steamcmd.sh" ]; then
@@ -31,6 +32,12 @@ python app_launcher.py \
     --port ${PORT:-7860} &
 
 PID=$!
+
+# Print a message every 30 seconds to keep logs active
+while kill -0 $PID 2>/dev/null; do
+    echo "Application is still running at $(date)"
+    sleep 30
+done
 
 # Wait for the process to terminate
 wait $PID

@@ -7,7 +7,32 @@ import os
 import sys
 import logging
 import argparse
+import threading
 from pathlib import Path
+
+# Add health check server
+from flask import Flask
+import threading
+
+def start_health_check_server(port=8081):
+    """Start a simple health check server"""
+    app = Flask("health_check")
+    
+    @app.route('/health')
+    def health_check():
+        return '{"status": "healthy"}'
+    
+    @app.route('/')
+    def root():
+        return 'Steam Games Downloader is running. Access the UI on port 8080.'
+    
+    # Run in a separate thread
+    threading.Thread(
+        target=lambda: app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False),
+        daemon=True
+    ).start()
+    
+    logging.getLogger('launcher').info(f"Health check server running on port {port}")
 
 def configure_logging(debug=False):
     """Set up logging configuration"""
@@ -55,6 +80,12 @@ def parse_arguments():
         action='store_true',
         help='Disable public URL sharing'
     )
+    parser.add_argument(
+        '--health-port',
+        type=int,
+        default=8081,
+        help='Health check server port'
+    )
     return parser.parse_args()
 
 def initialize_environment():
@@ -94,18 +125,42 @@ def launch_interface(args):
     
     logger.info(f"Launching interface with sharing={'enabled' if enable_sharing else 'disabled'}")
     
-    # Use queue=True to ensure the server keeps running
-    interface.launch(
-        server_name=args.host,
-        server_port=args.port,
-        share=enable_sharing,
-        prevent_thread_lock=False,  # Changed to False to block main thread
-        show_api=False,
-        quiet=True
-    )
-    
-    # The code below won't execute until the server is shut down
-    logger.info("Interface server has stopped")
+    # Start in a thread to avoid blocking if health checks are important
+    if os.environ.get('ENVIRONMENT') == 'cloud':
+        # In cloud environment, run in thread to allow health checks to respond
+        thread = threading.Thread(
+            target=lambda: interface.launch(
+                server_name=args.host,
+                server_port=args.port,
+                share=enable_sharing,
+                prevent_thread_lock=True,
+                show_api=False,
+                quiet=True
+            )
+        )
+        thread.daemon = True
+        thread.start()
+        
+        # Keep the main thread alive
+        try:
+            while thread.is_alive():
+                thread.join(1)  # Join with timeout to keep checking if alive
+        except KeyboardInterrupt:
+            logger.info("Received keyboard interrupt, shutting down...")
+            
+        logger.info("Interface thread has stopped")
+    else:
+        # For local/development environment, block on the interface
+        interface.launch(
+            server_name=args.host,
+            server_port=args.port,
+            share=enable_sharing,
+            prevent_thread_lock=False,
+            show_api=False,
+            quiet=True
+        )
+        
+        logger.info("Interface server has stopped")
 
 def main():
     """Main application entry point"""
@@ -117,20 +172,32 @@ def main():
     logger.debug(f"Working directory: {os.getcwd()}")
     
     try:
-        # Add signal handlers for graceful shutdown
+        # Set up signal handling
         import signal
         def signal_handler(sig, frame):
             logger.info(f"Received signal {sig}, shutting down gracefully...")
-            sys.exit(0)
+            # Don't exit immediately to allow cleanup
+            threading.Timer(2.0, lambda: sys.exit(0)).start()
         
+        # Install signal handlers
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
         
+        # Start health check server first
+        if os.environ.get('ENVIRONMENT') == 'cloud':
+            # In cloud environment, health checks are critical
+            logger.info("Starting health check server for cloud environment")
+            start_health_check_server(args.health_port)
+        
+        # Initialize environment and resources
         initialize_environment()
+        
+        # Launch the main interface
         launch_interface(args)
         
-        # This will only be reached if interface.launch() finishes (which it shouldn't)
+        # This will only be reached if interface.launch() finishes
         logger.warning("Interface launch returned unexpectedly. Container will exit.")
+        
     except Exception as e:
         logger.critical(f"Fatal error: {str(e)}", exc_info=True)
         sys.exit(1)
