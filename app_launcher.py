@@ -83,6 +83,9 @@ def launch_interface(args):
     """Launch the Gradio interface"""
     from gradio_interface import create_interface
     
+    # Get the logger
+    logger = logging.getLogger('launcher')
+    
     # Get the interface
     interface = create_interface()
     
