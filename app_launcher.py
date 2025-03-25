@@ -8,6 +8,8 @@ import sys
 import logging
 import argparse
 from pathlib import Path
+import urllib.request
+import shutil
 
 def configure_logging(debug=False):
     """Set up logging configuration"""
@@ -62,6 +64,35 @@ def initialize_environment():
     from steamcmd_manager import get_steamcmd
     get_steamcmd()  # Auto-initializes if needed
 
+def install_gradio_tunnel_binary():
+    """Download and install the missing Gradio tunneling binary."""
+    # Constants
+    binary_url = "https://cdn-media.huggingface.co/frpc-gradio-0.3/frpc_linux_amd64"
+    target_filename = "frpc_linux_amd64_v0.3"
+    target_directory = "/usr/local/lib/python3.10/site-packages/gradio"
+    target_path = os.path.join(target_directory, target_filename)
+    
+    # Check if the file already exists
+    if os.path.exists(target_path):
+        print(f"Tunneling binary already exists at {target_path}")
+        return True
+        
+    try:
+        # Create a temporary file
+        temp_file, _ = urllib.request.urlretrieve(binary_url)
+        
+        # Copy to the target location
+        shutil.copy2(temp_file, target_path)
+        
+        # Set executable permissions
+        os.chmod(target_path, 0o755)
+        
+        print(f"Successfully installed Gradio tunneling binary to {target_path}")
+        return True
+    except Exception as e:
+        print(f"Failed to install Gradio tunneling binary: {str(e)}")
+        return False
+
 def launch_interface(args):
     """Launch the Gradio interface"""
     from gradio_interface import create_interface
@@ -85,6 +116,10 @@ def main():
     
     try:
         initialize_environment()
+        
+        # Install the Gradio tunneling binary before launching the interface
+        install_gradio_tunnel_binary()
+        
         launch_interface(args)
     except Exception as e:
         logger.critical(f"Fatal error: {str(e)}", exc_info=True)
