@@ -127,4 +127,9 @@ if __name__ == "__main__":
     # For testing
     logging.basicConfig(level=logging.INFO)
     interface = create_interface()
-    interface.launch()
+    interface.launch(
+        server_name=args.host, 
+        server_port=args.port,
+        share=True,
+        prevent_thread_lock=True
+    )
