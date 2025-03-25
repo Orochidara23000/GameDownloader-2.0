@@ -70,7 +70,7 @@ def launch_interface(args):
     interface.launch(
         server_name=args.host,
         server_port=args.port,
-        share=False,
+        share=True,
         prevent_thread_lock=True
     )
 
