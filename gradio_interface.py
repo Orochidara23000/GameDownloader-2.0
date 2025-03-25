@@ -28,8 +28,21 @@ class SteamDownloaderInterface:
             # Header
             gr.Markdown("# Steam Games Downloader")
             
-            # Access info
-            self._create_access_info()
+            # Access info section
+            with gr.Row(elem_classes="access-info-container"):
+                with gr.Column():
+                    gr.Markdown("### Access Information")
+                    
+                    # Check if tunneling binary exists
+                    tunneling_available = os.path.exists("/usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3")
+                    if tunneling_available:
+                        gr.Markdown("✅ **Public sharing is available** - A public URL will be generated when the app starts.")
+                    else:
+                        gr.Markdown("⚠️ **Public sharing is NOT available** - This app can only be accessed via direct URL.")
+                        gr.Markdown("To access this application, use one of these methods:")
+                        gr.Markdown("1. Access via the container's hostname/IP and port")
+                        gr.Markdown("2. Set up a reverse proxy or ingress to expose this service")
+                        gr.Markdown("3. Configure port forwarding if running locally")
             
             # Tabbed interface
             with gr.Tabs():
@@ -48,22 +61,6 @@ class SteamDownloaderInterface:
 
         return interface
     
-    def _create_access_info(self):
-        """Display access information for the app"""
-        with gr.Box():
-            gr.Markdown("### Access Information")
-            
-            # Check if tunneling binary exists
-            tunneling_available = os.path.exists("/usr/local/lib/python3.10/site-packages/gradio/frpc_linux_amd64_v0.3")
-            if tunneling_available:
-                gr.Markdown("✅ **Public sharing is available** - A public URL will be generated when the app starts.")
-            else:
-                gr.Markdown("⚠️ **Public sharing is NOT available** - This app can only be accessed via direct URL.")
-                gr.Markdown("To access this application, use one of these methods:")
-                gr.Markdown("1. Access via the container's hostname/IP and port")
-                gr.Markdown("2. Set up a reverse proxy or ingress to expose this service")
-                gr.Markdown("3. Configure port forwarding if running locally")
-
     def _create_download_tab(self):
         """Download game tab UI"""
         with gr.Row():
@@ -137,6 +134,13 @@ class SteamDownloaderInterface:
         .status-completed { color: #28a745; font-weight: bold; }
         .status-failed { color: #dc3545; font-weight: bold; }
         .container { margin: 0.5em 0; }
+        .access-info-container { 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            padding: 10px; 
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+        }
         """
 
 def create_interface():
