@@ -1,4 +1,3 @@
-# Use official Python image
 FROM python:3.10-slim
 
 # Install system dependencies
@@ -9,9 +8,6 @@ RUN apt-get update && \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
-
 # Install SteamCMD
 RUN mkdir -p /usr/local/steamcmd && \
     cd /usr/local/steamcmd && \
@@ -19,14 +15,19 @@ RUN mkdir -p /usr/local/steamcmd && \
     chmod +x steamcmd.sh && \
     ln -s /usr/local/steamcmd/steamcmd.sh /usr/local/bin/steamcmd
 
-# Copy application files
+WORKDIR /app
+
+# Copy files and set permissions
 COPY . .
+RUN chmod +x startup.sh && \
+    chown -R nobody:nogroup /app && \
+    mkdir -p /data/{downloads,config,logs} && \
+    chown -R nobody:nogroup /data
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create data directories
-RUN mkdir -p /data/{downloads,config,logs}
+# Run as non-root user
+USER nobody
 
-# Set startup command
 CMD ["./startup.sh"]
