@@ -1,53 +1,31 @@
 #!/bin/bash
-# Simplified Startup Script for Steam Games Downloader
+# Nixpacks-compatible Startup Script
 
 set -e
 
-# Configuration
-APP_DIR="/app"
-DATA_DIR="/data"
-LOG_DIR="/var/log/steamdownloader"
-STEAMCMD_DIR="/root/steamcmd"
-
 # Initialize directories
-mkdir -p ${DATA_DIR}/downloads
-mkdir -p ${LOG_DIR}
-mkdir -p ${STEAMCMD_DIR}
+mkdir -p /data/downloads
+mkdir -p /data/config
 
-# Check dependencies
-echo "=== Checking dependencies ==="
-if ! command -v python3 &> /dev/null; then
-    echo "ERROR: python3 not found!"
-    exit 1
-fi
-
-# Install Python dependencies
-echo "=== Installing Python packages ==="
-pip install -r ${APP_DIR}/requirements.txt
-
-# Check SteamCMD
-echo "=== Checking SteamCMD ==="
-if [ ! -f "${STEAMCMD_DIR}/steamcmd.sh" ]; then
+# Install SteamCMD if not present
+if [ ! -f "$HOME/steamcmd/steamcmd.sh" ]; then
     echo "Installing SteamCMD..."
-    cd ${STEAMCMD_DIR}
+    mkdir -p "$HOME/steamcmd"
+    cd "$HOME/steamcmd"
     curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -
     chmod +x steamcmd.sh
-    cd ${APP_DIR}
+    cd -
 fi
 
-# Initialize SteamCMD
-echo "=== Testing SteamCMD ==="
-if ! ${STEAMCMD_DIR}/steamcmd.sh +quit; then
-    echo "WARNING: SteamCMD initialization failed - downloads may not work"
+# Test SteamCMD
+echo "Testing SteamCMD..."
+if ! "$HOME/steamcmd/steamcmd.sh" +quit; then
+    echo "Warning: SteamCMD test failed - downloads may not work"
 fi
 
-# Start application
-echo "=== Starting Application ==="
-cd ${APP_DIR}
-
-# Auto-select launcher script
+# Find and run the main application
 LAUNCHER=""
-for script in app_launcher.py main.py run.py simple.py; do
+for script in app_launcher.py main.py run.py; do
     if [ -f "$script" ]; then
         LAUNCHER="$script"
         break
@@ -55,12 +33,8 @@ for script in app_launcher.py main.py run.py simple.py; do
 done
 
 if [ -z "$LAUNCHER" ]; then
-    echo "ERROR: No launcher script found!"
+    echo "Error: No launcher script found!"
     exit 1
 fi
 
-# Run with basic python command
-exec python3 ${LAUNCHER} \
-    --host 0.0.0.0 \
-    --port ${PORT:-7860} \
-    --no-browser
+exec python "$LAUNCHER" --host 0.0.0.0 --port ${PORT:-7860}
